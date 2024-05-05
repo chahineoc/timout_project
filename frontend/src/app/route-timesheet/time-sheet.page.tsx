@@ -12,18 +12,25 @@ import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../../backend/src/router";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/table";
 
+
 export default function TimeSheetPage() {
   const today = startOfDay(new Date());
   const [{ startDate, endDate }, setDateInterval] = useState({
     startDate: today,
     endDate: addDays(today, 6),
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
   const timesheetQuery = trpc.employees.getTimeSheet.useQuery({
     startDate,
     endDate,
   });
+
   const data = timesheetQuery.data;
+
+  const filteredData = data?.filter(record =>
+    `${record.employee.firstName} ${record.employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -36,7 +43,12 @@ export default function TimeSheetPage() {
               backgroundImage: `url(${SearchIcon})`,
             }}
           ></div>
-          <input className="w-full rounded-3xl outline-none" placeholder="Search for an employee" />
+          <input
+            className="w-full rounded-3xl outline-none"
+            placeholder="Search for an employee"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
       <div className="flex h-14 items-end justify-end px-6">
@@ -72,7 +84,6 @@ export default function TimeSheetPage() {
         </div>
         <button
           onClick={() => {
-            timesheetQuery.remove();
             timesheetQuery.refetch();
           }}
           type="button"
@@ -89,15 +100,15 @@ export default function TimeSheetPage() {
       </div>
       {timesheetQuery.isLoading && <div>Loading...</div>}
       {timesheetQuery.error && <div className="text-red">{timesheetQuery.error.message}</div>}
-      {data &&
-        (data.length === 0 ? (
+      {filteredData && (filteredData.length === 0 ? (
           <div>No employees found!</div>
         ) : (
-          timesheetQuery.isSuccess && <TimeSheetTable startDate={startDate} data={data} />
+          timesheetQuery.isSuccess && <TimeSheetTable startDate={startDate} data={filteredData} />
         ))}
     </div>
   );
 }
+
 
 function getDatesOfWeek(startDate: Date) {
   return Array.from({ length: 7 }, (_, i) => addDays(startDate, i));

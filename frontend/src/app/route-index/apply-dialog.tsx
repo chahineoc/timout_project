@@ -84,8 +84,8 @@ export default function ApplyDialog(props: Props) {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-gray-light data-[state=open]:animate-overlayShow" />
 
-        <Dialog.Content className="fixed left-[50%] top-[50%] h-auto max-h-[85vh] w-[36rem] translate-x-[-50%] translate-y-[-50%] overflow-auto rounded-xl bg-white p-6 focus:outline-none data-[state=open]:animate-contentShow">
-          <header className="flex h-14 items-center">
+        <Dialog.Content className="fixed inset-0 max-h-full w-full p-4 md:p-6 md:left-1/2 md:top-1/2 md:w-[36rem] md:max-h-[85vh] md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-xl bg-white overflow-auto focus:outline-none data-[state=open]:animate-contentShow">
+          <header className="flex h-14 items-center justify-between">
             <Dialog.Title className="flex-1 text-xl font-bold text-black-dark">Apply for a Request</Dialog.Title>
             <Dialog.Close asChild>
               <button
@@ -104,7 +104,7 @@ export default function ApplyDialog(props: Props) {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-              <div className="grid grid-cols-2 gap-7 pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="h-56 rounded-3xl bg-gray-light px-5 py-6">
                   <h1 className="text-xs uppercase text-gray-text">Your Entitlement</h1>
                   <EntitlementBars display="compact" />

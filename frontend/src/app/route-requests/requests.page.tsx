@@ -8,11 +8,18 @@ import RefreshIcon from "~/app/icon-refresh.svg";
 import SunIcon from "~/app/icon-sun.svg";
 import SickIcon from "~/app/icon-sick.svg";
 import HouseIcon from "~/app/icon-house.svg";
+import { useState } from "react";
 
 export default function RequestsPage() {
+  const [searchTerm, setSearchTerm] = useState('');
   const requestsQuery = trpc.leaveRequests.getLeaveRequests.useQuery();
-
   const { data } = requestsQuery;
+
+  const filteredData = data?.filter(request => 
+    `${request.employee.firstName} ${request.employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    request.leavePolicy.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    request.status.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -25,13 +32,17 @@ export default function RequestsPage() {
               backgroundImage: `url(${SearchIcon})`,
             }}
           ></div>
-          <input className="w-full rounded-3xl outline-none" placeholder="Search for a request" />
+          <input
+            className="w-full rounded-3xl outline-none"
+            placeholder="Search for a request"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
       <div className="flex h-14 items-end justify-end px-6">
         <button
           onClick={() => {
-            requestsQuery.remove();
             requestsQuery.refetch();
           }}
           type="button"
@@ -48,11 +59,11 @@ export default function RequestsPage() {
       </div>
       {requestsQuery.isLoading && <div>Loading...</div>}
       {requestsQuery.error && <div className="text-red">{requestsQuery.error.message}</div>}
-      {data &&
-        (data.length === 0 ? <div>No requests found!</div> : requestsQuery.isSuccess && <RequestsTable data={data} />)}
+      {filteredData && (filteredData.length === 0 ? <div>No requests found!</div> : <RequestsTable data={filteredData} />)}
     </div>
   );
 }
+
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type LeaveRequestsResponse = RouterOutput["leaveRequests"]["getLeaveRequests"];
