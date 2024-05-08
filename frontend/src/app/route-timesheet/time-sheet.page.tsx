@@ -167,6 +167,11 @@ function TimeSheetTable(props: { data: TimeSheetResponse; startDate: Date }) {
 
 function TimeSheetCell(props: { value: EmployeeDate }) {
   const { value } = props;
+    
+  if (value.type === "weekend") {
+    return <div className="flex items-center justify-center text-gray-500">Weekend</div>;
+  }
+  
   const [icon, colorClass, iconClass] =
     value.type === "leave" && value.leavePolicy
       ? {

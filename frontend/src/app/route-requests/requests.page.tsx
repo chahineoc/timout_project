@@ -93,6 +93,7 @@ function RequestsTable(props: { data: LeaveRequestsResponse, handleStatusChange:
               <TableRow className="sticky top-0 bg-white text-blue shadow">
                 <TableHead>EMPLOYEE</TableHead>
                 <TableHead>TYPE</TableHead>
+                <TableHead>WORKING DAYS</TableHead> 
                 <TableHead>STARTING</TableHead>
                 <TableHead>ENDING</TableHead>
                 <TableHead>STATUS</TableHead>
@@ -107,6 +108,11 @@ function RequestsTable(props: { data: LeaveRequestsResponse, handleStatusChange:
                     </TableCell>
                     <TableCell>
                       <LeavePolicyCell value={leaveRequest.leavePolicy.title} />
+                    </TableCell>
+                    <TableCell>
+                      {typeof leaveRequest.workingDaysCount === 'number'
+                        ? leaveRequest.workingDaysCount
+                        : 'Loading...'}
                     </TableCell>
                     <TableCell>{format(leaveRequest.startDate, "dd/MM/yyyy")}</TableCell>
                     <TableCell>{format(leaveRequest.endDate, "dd/MM/yyyy")}</TableCell>

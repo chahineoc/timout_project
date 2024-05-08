@@ -1,8 +1,12 @@
-import { employees as employeesTable, leaveRequests as leaveRequestsTable } from "../../db/schema";
+import { employees as employeesTable, leaveRequests as leaveRequestsTable ,holidays as holidayTable} from "../../db/schema";
 import { or, eq, and, gte, lte } from "drizzle-orm";
 import { LeavePolicy } from "../../db/schema-types";
-import { eachDayOfInterval, startOfDay, isWithinInterval } from "date-fns";
+import { isWeekend, isSameDay,eachDayOfInterval, startOfDay, isWithinInterval } from "date-fns";
 import { db } from "../../db";
+import { eachYearOfInterval, startOfYear, lastDayOfYear } from 'date-fns';
+import { leavePolicies as leavePoliciesTable } from '../../db/schema';
+
+
 
 type GetDatesProps = {
   leaveRequests: ({
@@ -17,6 +21,13 @@ export function getDateDetails({ leaveRequests, startDate, endDate }: GetDatesPr
   const dates = eachDayOfInterval({ start: startDate, end: endDate }).map((date) => startOfDay(date));
 
   return dates.map((date) => {
+
+      if (isWeekend(date)) {
+        return {
+          type: "weekend" as const,
+          date,
+        };
+      }
     const leavePriorities: Record<string, number> = {
       // Sick Leave
       "2": 1,
@@ -85,6 +96,9 @@ export async function getEntitlements(employeeId: number, year: number) {
   const leavePolicies = await db.query.leavePolicies.findMany();
 
   const employeeDates = getDateDetails({ leaveRequests, startDate, endDate });
+  
+  
+
 
   type EmployeeEntitlement = LeavePolicy & { alreadyTaken: number };
 
@@ -101,3 +115,68 @@ export async function getEntitlements(employeeId: number, year: number) {
     entitlement,
   };
 }
+export async function calculateWorkingDays(startDate: Date, endDate: Date): Promise<number> {
+  const daysArray = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const holidays = await db.query.holidays.findMany();
+  
+  const workingDays = daysArray.filter(day => !isWeekend(day) && !holidays.some(holiday => isSameDay(holiday.date, day)));
+
+
+  return workingDays.length;
+  
+}
+
+
+
+export async function validateLeaveRequest(employeeId: number, leavePolicyId: number, startDate: Date, endDate: Date): Promise<boolean> {
+  const years = eachYearOfInterval({ start: startDate, end: endDate });
+
+  for (const year of years) {
+    const yearStart = startOfYear(year);
+    const yearEnd = lastDayOfYear(year);
+
+    const currentYearStart = startDate > yearStart ? startDate : yearStart;
+    const currentYearEnd = endDate < yearEnd ? endDate : yearEnd;
+
+    const workingDays = await calculateWorkingDays(currentYearStart, currentYearEnd);
+
+
+    try {
+      const leaveEntitlement = await db.query.leavePolicies.findFirst({
+        where: eq(leavePoliciesTable.id, leavePolicyId),
+        with: {
+          leaveRequests: {
+            where: and(
+              eq(leaveRequestsTable.employeeId, employeeId),
+              gte(leaveRequestsTable.endDate, yearStart),
+              lte(leaveRequestsTable.startDate, yearEnd),
+              or(eq(leaveRequestsTable.status, "pending"), eq(leaveRequestsTable.status, "approved"))
+            ),
+          },
+        },
+      });
+
+      if (!leaveEntitlement) {
+        throw new Error("No leave policy found.");
+      }
+
+      const requests = (leaveEntitlement.leaveRequests as any[]) || [];
+
+
+      let takenDays = 0;
+      for (const request of requests) {
+        takenDays += await calculateWorkingDays(new Date(request.startDate), new Date(request.endDate));
+      }
+
+
+      const allowedDays = leaveEntitlement.allowedDaysPerYear ?? 0;
+
+      if (workingDays > (allowedDays - takenDays)) {
+        return false;
+      }
+    } 
+  }
+  return true;
+}
+

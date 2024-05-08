@@ -1,5 +1,7 @@
 import { ClockCard } from "~/app/route-puzzles/route-clock/clock-card";
 import { useCountRendered } from "~/app/route-puzzles/route-clock/use-count-rendered";
+import React from 'react';
+
 
 export default function ClockPage() {
   const uniqueKey = Date.now();
@@ -108,11 +110,24 @@ function Clock({ hours, minutes, seconds }: { hours: number; minutes: number; se
 }
 
 function useCurrentTime() {
-  // CHANGE CODE HERE AND ONLY HERE ==================
-  return {
+  const [time, setTime] = React.useState({
     hours: new Date().getHours(),
     minutes: new Date().getMinutes(),
     seconds: new Date().getSeconds(),
-  };
-  // =================================================
+  });
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setTime({
+        hours: new Date().getHours(),
+        minutes: new Date().getMinutes(),
+        seconds: new Date().getSeconds(),
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return time;
 }
+
