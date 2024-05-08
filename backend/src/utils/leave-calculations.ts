@@ -1,5 +1,5 @@
 import { employees as employeesTable, leaveRequests as leaveRequestsTable } from "../../db/schema";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { or, eq, and, gte, lte } from "drizzle-orm";
 import { LeavePolicy } from "../../db/schema-types";
 import { eachDayOfInterval, startOfDay, isWithinInterval } from "date-fns";
 import { db } from "../../db";
@@ -58,11 +58,17 @@ export function getDateDetails({ leaveRequests, startDate, endDate }: GetDatesPr
 export async function getEntitlements(employeeId: number, year: number) {
   const startDate = new Date(`${year}/01/01`);
   const endDate = new Date(`${year}/12/31`);
+
+  // Fetch leave requests with status pending or approved
   const employeeQuery = await db.query.employees.findFirst({
     where: eq(employeesTable.id, employeeId),
     with: {
       leaveRequests: {
-        where: and(gte(leaveRequestsTable.endDate, startDate), lte(leaveRequestsTable.startDate, endDate)),
+        where: and(
+          gte(leaveRequestsTable.endDate, startDate),
+          lte(leaveRequestsTable.startDate, endDate),
+          or(eq(leaveRequestsTable.status, "pending"), eq(leaveRequestsTable.status, "approved"))
+        ),
         with: {
           leavePolicy: true,
         },

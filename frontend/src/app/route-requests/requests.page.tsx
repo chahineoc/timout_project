@@ -13,14 +13,27 @@ import { useState } from "react";
 export default function RequestsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const requestsQuery = trpc.leaveRequests.getLeaveRequests.useQuery();
+  const updateStatus = trpc.leaveRequests.updateStatus.useMutation();
+
   const { data } = requestsQuery;
 
-  const filteredData = data?.filter(request => 
+  const filteredData = data?.filter(request =>
     `${request.employee.firstName} ${request.employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     request.leavePolicy.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     request.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+
+  const handleStatusChange = (id: number, newStatus: string) => {
+    if (newStatus === 'approved' || newStatus === 'rejected') {
+      updateStatus.mutate({ leaveRequestId: id, newStatus }, {
+        onSuccess: () => {
+          requestsQuery.refetch();
+        }
+      });
+    } 
+  };
+  
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-20 items-center justify-start px-6">
@@ -59,7 +72,7 @@ export default function RequestsPage() {
       </div>
       {requestsQuery.isLoading && <div>Loading...</div>}
       {requestsQuery.error && <div className="text-red">{requestsQuery.error.message}</div>}
-      {filteredData && (filteredData.length === 0 ? <div>No requests found!</div> : <RequestsTable data={filteredData} />)}
+      {filteredData && (filteredData.length === 0 ? <div>No requests found!</div> : <RequestsTable data={filteredData} handleStatusChange={handleStatusChange} />)}
     </div>
   );
 }
@@ -68,8 +81,8 @@ export default function RequestsPage() {
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type LeaveRequestsResponse = RouterOutput["leaveRequests"]["getLeaveRequests"];
 
-function RequestsTable(props: { data: LeaveRequestsResponse }) {
-  const { data } = props;
+function RequestsTable(props: { data: LeaveRequestsResponse, handleStatusChange: (id: number, status: string) => void }) {
+  const { data, handleStatusChange } = props;
 
   return (
     <div className="min-h-0">
@@ -87,53 +100,44 @@ function RequestsTable(props: { data: LeaveRequestsResponse }) {
             </TableHeader>
             <TableBody>
               {data.length > 0 ? (
-                data.map((leaveRequest) => {
-                  return (
-                    <TableRow key={leaveRequest.id} className="bg-white">
-                      <TableCell className="font-bold">
-                        {leaveRequest.employee.firstName} {leaveRequest.employee.lastName}
-                      </TableCell>
-                      <TableCell>
-                        <LeavePolicyCell value={leaveRequest.leavePolicy.title} />
-                      </TableCell>
-                      <TableCell>{format(leaveRequest.startDate, "dd/MM/Y")}</TableCell>
-                      <TableCell>{format(leaveRequest.endDate, "dd/MM/Y")}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <div>{`${leaveRequest.status[0].toUpperCase()}${leaveRequest.status.slice(1)}`}</div>
-
-                          {/*<div className="ml-4">
-                              <button
-                                type="button"
-                                className="flex h-9 items-center rounded-md border border-green px-8
-              text-sm text-green outline-none transition-colors duration-300
-                hover:bg-green hover:text-white
-                focus:ring-2 focus:ring-green
-                active:opacity-60 active:transition-none"
-                              >
-                                Approve
-                              </button>
-                            </div>
-                            <div className="ml-2">
-                              <button
-                                type="button"
-                                className="flex h-9 items-center rounded-md border border-red px-8
-                text-sm text-red outline-none transition-colors duration-300
-                  hover:bg-red hover:text-white
-                  focus:ring-2 focus:ring-red
-                  active:opacity-60 active:transition-none"
-                              >
-                                Reject
-                              </button>
-                            </div>*/}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                data.map((leaveRequest) => (
+                  <TableRow key={leaveRequest.id} className="bg-white">
+                    <TableCell className="font-bold">
+                      {leaveRequest.employee.firstName} {leaveRequest.employee.lastName}
+                    </TableCell>
+                    <TableCell>
+                      <LeavePolicyCell value={leaveRequest.leavePolicy.title} />
+                    </TableCell>
+                    <TableCell>{format(leaveRequest.startDate, "dd/MM/yyyy")}</TableCell>
+                    <TableCell>{format(leaveRequest.endDate, "dd/MM/yyyy")}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <div>{`${leaveRequest.status[0].toUpperCase()}${leaveRequest.status.slice(1)}`}</div>
+                        {leaveRequest.status === 'pending' && (
+                          <div className="ml-4 space-x-2">
+                            <button
+                              type="button"
+                              className="flex h-9 items-center rounded-md border border-green px-8 text-sm text-green outline-none transition-colors duration-300 hover:bg-green hover:text-white focus:ring-2 focus:ring-green active:opacity-60 active:transition-none"
+                              onClick={() => handleStatusChange(leaveRequest.id, 'approved')}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              className="flex h-9 items-center rounded-md border border-red px-8 text-sm text-red outline-none transition-colors duration-300 hover:bg-red hover:text-white focus:ring-2 focus:ring-red active:opacity-60 active:transition-none"
+                              onClick={() => handleStatusChange(leaveRequest.id, 'rejected')}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     No results.
                   </TableCell>
                 </TableRow>

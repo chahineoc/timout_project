@@ -11,7 +11,7 @@ import RightArrowIcon from "./icon-arrow-right.svg";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../../backend/src/router";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/table";
-
+import { useCurrentSession } from "../auth";
 
 export default function TimeSheetPage() {
   const today = startOfDay(new Date());
@@ -20,7 +20,6 @@ export default function TimeSheetPage() {
     endDate: addDays(today, 6),
   });
   const [searchTerm, setSearchTerm] = useState("");
-
   const timesheetQuery = trpc.employees.getTimeSheet.useQuery({
     startDate,
     endDate,
@@ -119,6 +118,7 @@ type TimeSheetResponse = RouterOutput["employees"]["getTimeSheet"];
 type EmployeeDate = RouterOutput["employees"]["getTimeSheet"][number]["dates"][number];
 
 function TimeSheetTable(props: { data: TimeSheetResponse; startDate: Date }) {
+  const { employee: currentUser } = useCurrentSession();
   const { data, startDate } = props;
   const dates = useMemo(() => getDatesOfWeek(startDate), [startDate]);
 
@@ -141,27 +141,23 @@ function TimeSheetTable(props: { data: TimeSheetResponse; startDate: Date }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.length > 0 ? (
-                data.map((record) => (
-                  <TableRow key={record.employee.id} className="bg-white">
-                    <TableCell className="font-bold">
-                      {record.employee.firstName} {record.employee.lastName}
-                    </TableCell>
-                    {dates.map((date, i) => (
-                      <TableCell key={date.toString()}>
-                        <TimeSheetCell value={record.dates[i]} />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    No results.
+            {data.map((record) => {
+              // Correcting the way to access the id property according to the new structure
+              const isCurrentUser = record.employee.id === currentUser.details.id;
+              return (
+                <TableRow key={record.employee.id} className={`bg-white ${isCurrentUser ? "border-t-2 border-b-2 border-blue-500" : ""}`}>
+                  <TableCell className={`font-bold ${isCurrentUser ? "bg-blue-500 text-white" : ""}`}>
+                    {record.employee.firstName} {record.employee.lastName} {isCurrentUser ? "(You)" : ""}
                   </TableCell>
+                  {dates.map((date, i) => (
+                    <TableCell key={date.toString()}>
+                      <TimeSheetCell value={record.dates[i]} />
+                    </TableCell>
+                  ))}
                 </TableRow>
-              )}
-            </TableBody>
+              );
+            })}
+          </TableBody>
           </Table>
         </div>
       </div>

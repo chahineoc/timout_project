@@ -57,8 +57,25 @@ export default router({
           leavePolicyId: leavePolicy.id,
           startDate,
           endDate,
-          status: "approved",
+          status: "pending",
         })
         .returning();
     }),
+    updateStatus: publicProcedure
+    .input(
+      z.object({
+        leaveRequestId: z.number(),
+        newStatus: z.enum(["approved", "rejected"]),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { leaveRequestId, newStatus } = input;
+  
+      return await db.update(leaveRequestsTable) 
+        .set({ status: newStatus })
+        .where(eq(leaveRequestsTable.id, leaveRequestId)) 
+        .execute(); 
+    }),
+  
+  
 });
